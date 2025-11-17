@@ -48,6 +48,7 @@ import org.simlar.helper.CallEndReason;
 import org.simlar.helper.FileHelper;
 import org.simlar.helper.FileHelper.NotInitedException;
 import org.simlar.helper.NetworkQuality;
+import org.simlar.helper.QwamosPqSecurityHelper;
 import org.simlar.helper.VideoState;
 import org.simlar.helper.Volumes;
 import org.simlar.helper.Volumes.MicrophoneStatus;
@@ -468,6 +469,27 @@ public final class LinphoneManager extends CoreListenerStub
 
 		if (!encrypted) {
 			Lg.e("unencrypted call: number=", new CallLogger(call), " with UserAgent ", call.getRemoteUserAgent());
+		}
+
+		// QWAMOS: Verify post-quantum security and enforce PQ-only policy
+		if (encrypted) {
+			QwamosPqSecurityHelper.logSecurityDetails(call);
+
+			final boolean pqPolicyMet = QwamosPqSecurityHelper.enforceQwamosPqPolicy(call);
+			if (!pqPolicyMet) {
+				Lg.e("QWAMOS: Call failed PQ security requirements - terminating");
+				Lg.e("QWAMOS: Remote: ", call.getRemoteUserAgent());
+
+				// Terminate call that doesn't meet PQ requirements
+				mLinphoneHandler.terminateAllCalls();
+
+				// Notify listener with error (policy violation will be shown in UI)
+				mListener.onCallStateChanged(getNumber(call), Call.State.Error,
+						CallEndReason.fromReason(Reason.NotAcceptable));
+				return;
+			}
+
+			Lg.i("QWAMOS: Call meets PQ security requirements - proceeding");
 		}
 
 		if (encrypted && mVideoState == VideoState.INITIALIZING) {

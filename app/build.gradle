@@ -61,7 +61,7 @@ repositories {
 
 android {
     defaultConfig {
-        applicationId "org.simlar"
+        applicationId "org.qwamos.securevoice"
         minSdkVersion 23
         compileSdk 35
         //noinspection OldTargetApi
@@ -71,6 +71,11 @@ android {
         versionCode createVersionCode(versionName)
         printf("versionName: $versionName\n")
         printf("versionCode: $versionCode\n")
+
+        // QWAMOS: Post-Quantum Only Build Configuration
+        buildConfigField("boolean", "QWAMOS_PQ_ONLY", "true")
+        buildConfigField("boolean", "ENFORCE_PQ_VOIP_ONLY", "true")
+        buildConfigField("String", "QWAMOS_VERSION_SUFFIX", "\"PQ-Secure\"")
     }
 
     compileOptions {

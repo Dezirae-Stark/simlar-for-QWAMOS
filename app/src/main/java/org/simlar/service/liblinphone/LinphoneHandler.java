@@ -156,27 +156,31 @@ final class LinphoneHandler
 		// CA file
 		mLinphoneCore.setRootCa(rootCaFile);
 
-		// enable zrtp
+		// QWAMOS: Enable ZRTP with POST-QUANTUM KEY AGREEMENT ONLY
 		mLinphoneCore.setMediaEncryption(MediaEncryption.ZRTP);
 		mLinphoneCore.setZrtpSecretsFile(zrtpSecretsCacheFile);
 		mLinphoneCore.setMediaEncryptionMandatory(true);
-		Lg.i("Zrtp post quantum encryption available: ", mLinphoneCore.getPostQuantumAvailable() ? "true" : "false");
-		// limited to seven elements
+
+		final boolean pqAvailable = mLinphoneCore.getPostQuantumAvailable();
+		Lg.i("QWAMOS: ZRTP Post-Quantum encryption available: ", pqAvailable ? "true" : "false");
+
+		if (!pqAvailable) {
+			Lg.e("QWAMOS ERROR: Post-Quantum encryption NOT available in this Liblinphone build!");
+			Lg.e("QWAMOS: Build Liblinphone with -DENABLE_PQCRYPTO=ON for PQ support");
+		}
+
+		// QWAMOS POLICY: PQ/Hybrid suites ONLY - NO classical-only key agreement
+		// Priority order: Strongest PQ/hybrid first, fallback to weaker PQ/hybrid if needed
+		// All classical-only suites (X255, X448, Dh3K, Dh2K, Ec*) are REMOVED per QWAMOS policy
 		mLinphoneCore.setZrtpKeyAgreementSuites(new ZrtpKeyAgreement[] {
-				//ZrtpKeyAgreement.K255Kyb512Hqc128, // Bernstein Curve25519, Crystal Kyber, Hamming Quasi-Cyclic
-				//ZrtpKeyAgreement.K448Kyb1024Hqc256, // Goldilocks Curve448, Crystal Kyber, Hamming Quasi-Cyclic
-				ZrtpKeyAgreement.K255Kyb512, // Bernstein Curve25519, Crystal Kyber
-				ZrtpKeyAgreement.K448Kyb1024, // Goldilocks Curve448, Crystal Kyber
-				//ZrtpKeyAgreement.K255Hqc128, // Bernstein Curve25519, Hamming Quasi-Cyclic
-				//ZrtpKeyAgreement.K448Hqc256, // Goldilocks Curve448, Hamming Quasi-Cyclic
-				//ZrtpKeyAgreement.Ec52,
-				//ZrtpKeyAgreement.Ec38,
-				//ZrtpKeyAgreement.Ec25,
-				ZrtpKeyAgreement.X255, // Bernstein Curve25519
-				ZrtpKeyAgreement.X448, // Goldilocks Curve448
-				ZrtpKeyAgreement.Dh3K, // Diffie Hellman
-				ZrtpKeyAgreement.Dh2K  // Diffie Hellman
+				ZrtpKeyAgreement.K448Kyb1024, // Goldilocks Curve448 + Crystal Kyber-1024 (HIGHEST SECURITY)
+				ZrtpKeyAgreement.K255Kyb512,  // Bernstein Curve25519 + Crystal Kyber-512 (BALANCED)
+				// Optional: Enable HQC variants if available and desired
+				// ZrtpKeyAgreement.K448Kyb1024Hqc256, // Curve448 + Kyber-1024 + HQC-256
+				// ZrtpKeyAgreement.K255Kyb512Hqc128,  // Curve25519 + Kyber-512 + HQC-128
 		});
+
+		Lg.i("QWAMOS: PQ-only ZRTP policy enforced - classical key agreement disabled");
 
 		// set sound files
 		mLinphoneCore.setRingback(ringbackSoundFile);
