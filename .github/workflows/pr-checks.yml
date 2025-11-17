@@ -1,0 +1,148 @@
+name: Pull Request Checks
+
+on:
+  pull_request:
+    branches: [ "master", "feature/qwamos-pq-secure-voice" ]
+
+env:
+  JAVA_VERSION: '17'
+
+jobs:
+  validate-pr:
+    name: Validate Pull Request
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Check commit messages
+      run: |
+        echo "### 📝 Commit Message Validation" >> $GITHUB_STEP_SUMMARY
+        git log --format=%B -n 10 | head -50 >> $GITHUB_STEP_SUMMARY
+
+    - name: Check for large files
+      run: |
+        echo "### 📦 Large File Check" >> $GITHUB_STEP_SUMMARY
+        large_files=$(find . -type f -size +5M -not -path "./.git/*" -not -path "./app/libs/*" || true)
+        if [ -n "$large_files" ]; then
+          echo "⚠️ Large files detected (>5MB):" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "$large_files" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "✅ No large files detected" >> $GITHUB_STEP_SUMMARY
+        fi
+
+    - name: Check for sensitive data
+      run: |
+        echo "### 🔒 Security Check" >> $GITHUB_STEP_SUMMARY
+
+        # Check for potential API keys or secrets
+        if grep -rn --include="*.java" --include="*.xml" "api[_-]?key\|secret\|password\|token" . | grep -v "BuildConfig\|PreferencesHelper\|// "; then
+          echo "⚠️ Potential secrets found - review carefully" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "✅ No obvious secrets detected" >> $GITHUB_STEP_SUMMARY
+        fi
+
+  build-check:
+    name: Build Verification
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Set up JDK ${{ env.JAVA_VERSION }}
+      uses: actions/setup-java@v4
+      with:
+        java-version: ${{ env.JAVA_VERSION }}
+        distribution: 'temurin'
+        cache: gradle
+
+    - name: Setup Android SDK
+      uses: android-actions/setup-android@v3
+
+    - name: Grant execute permission for gradlew
+      run: chmod +x gradlew
+
+    - name: Check Gradle wrapper validation
+      uses: gradle/wrapper-validation-action@v2
+
+    - name: Compile check (no full build)
+      run: ./gradlew compileDebugJavaWithJavac --no-daemon
+      env:
+        ANDROID_HOME: ${{ env.ANDROID_SDK_ROOT }}
+
+    - name: Report
+      run: |
+        echo "### ✅ Code Compiles Successfully" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "Pull request is ready for review." >> $GITHUB_STEP_SUMMARY
+
+  security-features-check:
+    name: QWAMOS Security Features Check
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Verify QWAMOS security features
+      run: |
+        echo "### 🛡️ QWAMOS Security Features" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+
+        errors=0
+
+        # Check 1: PQ ZRTP configuration
+        if grep -q "K448Kyb1024.*K255Kyb512" app/src/main/java/org/simlar/service/liblinphone/LinphoneHandler.java; then
+          echo "✅ **PQ ZRTP Suites:** Kyber-1024 and Kyber-512 configured" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "❌ **PQ ZRTP Suites:** Missing or incorrect" >> $GITHUB_STEP_SUMMARY
+          errors=$((errors+1))
+        fi
+
+        # Check 2: Classical suite removal
+        if grep -q "ZrtpKeyAgreement.X[0-9]" app/src/main/java/org/simlar/service/liblinphone/LinphoneHandler.java; then
+          echo "❌ **Classical Suites:** Still present (should be removed)" >> $GITHUB_STEP_SUMMARY
+          errors=$((errors+1))
+        else
+          echo "✅ **Classical Suites:** Properly removed" >> $GITHUB_STEP_SUMMARY
+        fi
+
+        # Check 3: PQ policy enforcement
+        if [ -f "app/src/main/java/org/simlar/helper/QwamosPqSecurityHelper.java" ]; then
+          echo "✅ **PQ Security Helper:** Present" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "❌ **PQ Security Helper:** Missing" >> $GITHUB_STEP_SUMMARY
+          errors=$((errors+1))
+        fi
+
+        # Check 4: Package name
+        if grep -q 'applicationId "org.qwamos.securevoice"' app/build.gradle; then
+          echo "✅ **Package Name:** org.qwamos.securevoice" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "⚠️ **Package Name:** Not set to org.qwamos.securevoice" >> $GITHUB_STEP_SUMMARY
+        fi
+
+        # Check 5: Build flags
+        if grep -q "QWAMOS_PQ_ONLY" app/build.gradle; then
+          echo "✅ **Build Flags:** QWAMOS_PQ_ONLY configured" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "⚠️ **Build Flags:** QWAMOS flags not found" >> $GITHUB_STEP_SUMMARY
+        fi
+
+        echo "" >> $GITHUB_STEP_SUMMARY
+
+        if [ $errors -eq 0 ]; then
+          echo "✅ **All critical security features validated**" >> $GITHUB_STEP_SUMMARY
+          exit 0
+        else
+          echo "❌ **$errors critical issues found**" >> $GITHUB_STEP_SUMMARY
+          exit 1
+        fi

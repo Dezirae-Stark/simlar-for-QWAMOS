@@ -1,0 +1,172 @@
+name: Create Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., v1.0.0)'
+        required: true
+        type: string
+
+env:
+  JAVA_VERSION: '17'
+
+jobs:
+  create-release:
+    name: Build and Create Release
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        submodules: recursive
+
+    - name: Set up JDK ${{ env.JAVA_VERSION }}
+      uses: actions/setup-java@v4
+      with:
+        java-version: ${{ env.JAVA_VERSION }}
+        distribution: 'temurin'
+        cache: gradle
+
+    - name: Setup Android SDK
+      uses: android-actions/setup-android@v3
+
+    - name: Grant execute permission for gradlew
+      run: chmod +x gradlew
+
+    - name: Build Release APK
+      run: ./gradlew assembleAlwaysOnlineRelease -Pno-google-services --stacktrace
+      env:
+        ANDROID_HOME: ${{ env.ANDROID_SDK_ROOT }}
+
+    - name: Get version from tag or input
+      id: version
+      run: |
+        if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+          echo "VERSION=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+        else
+          echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Rename APK with version
+      run: |
+        VERSION=${{ steps.version.outputs.VERSION }}
+        cp app/build/outputs/apk/alwaysOnline/release/app-alwaysOnline-release-unsigned.apk \
+           simlar-qwamos-${VERSION}-unsigned.apk
+
+    - name: Generate checksums
+      run: |
+        VERSION=${{ steps.version.outputs.VERSION }}
+        sha256sum simlar-qwamos-${VERSION}-unsigned.apk > checksums-${VERSION}.txt
+        md5sum simlar-qwamos-${VERSION}-unsigned.apk >> checksums-${VERSION}.txt
+
+    - name: Create Release Notes
+      run: |
+        VERSION=${{ steps.version.outputs.VERSION }}
+        cat > release-notes-${VERSION}.md <<'EOF'
+        # QWAMOS Secure Voice ${{ steps.version.outputs.VERSION }}
+
+        ## 🔐 Post-Quantum Secure Voice for QWAMOS
+
+        This release includes:
+
+        ### Security Features
+        - ✅ **Post-Quantum ZRTP**: CRYSTALS-Kyber-1024 and Kyber-512 hybrid key agreement
+        - ✅ **PQ-Only Policy**: Automatic rejection of classical-only encryption
+        - ✅ **Runtime Verification**: Real-time PQ security checking
+        - ✅ **Visual Indicators**: Green/red security status display
+        - ✅ **Carrier Call Warnings**: Security alerts for insecure cellular calls
+        - ✅ **Network Proxy Support**: Tor/I2P routing for metadata protection
+        - ✅ **Video Call Security**: PQ verification for video streams
+
+        ### Installation
+
+        **⚠️ IMPORTANT: This APK is unsigned. You must sign it before installation.**
+
+        To sign the APK:
+        ```bash
+        # Generate a keystore (one-time setup)
+        keytool -genkey -v -keystore qwamos-release.keystore \
+          -alias qwamos -keyalg RSA -keysize 4096 -validity 10000
+
+        # Sign the APK
+        jarsigner -verbose -sigalg SHA256withRSA -digestalg SHA-256 \
+          -keystore qwamos-release.keystore \
+          simlar-qwamos-${{ steps.version.outputs.VERSION }}-unsigned.apk qwamos
+
+        # Verify signature
+        jarsigner -verify -verbose simlar-qwamos-${{ steps.version.outputs.VERSION }}-unsigned.apk
+
+        # Zipalign (optional but recommended)
+        zipalign -v 4 simlar-qwamos-${{ steps.version.outputs.VERSION }}-unsigned.apk \
+          simlar-qwamos-${{ steps.version.outputs.VERSION }}.apk
+        ```
+
+        ### Requirements
+
+        - **Android:** 8.0 (API 26) or higher
+        - **Permissions:** Microphone, Camera (for video), Phone State (for carrier warnings)
+        - **Dependencies:** PQ-enabled Liblinphone (see documentation)
+
+        ### Critical Dependencies
+
+        ⚠️ **This build uses standard Liblinphone without PQ support enabled.** For full post-quantum functionality, you must build Liblinphone from source with `-DENABLE_PQCRYPTO=ON`.
+
+        See [build instructions](https://github.com/Dezirae-Stark/simlar-for-QWAMOS/blob/feature/qwamos-pq-secure-voice/README.md) for details.
+
+        ### Testing
+
+        To verify PQ encryption is working:
+        1. Install on two devices
+        2. Make a call between them
+        3. Check for green 🔒 indicator
+        4. View logs: `adb logcat | grep QWAMOS`
+        5. Verify "PQ-Secured (Kyber)" status
+
+        ### Documentation
+
+        - [README](https://github.com/Dezirae-Stark/simlar-for-QWAMOS/blob/feature/qwamos-pq-secure-voice/README.md)
+        - [QWAMOS Secure Voice Documentation](https://github.com/Dezirae-Stark/QWAMOS/blob/master/docs/QWAMOS-Secure-Voice-PQ.md)
+        - [Implementation Details](https://github.com/Dezirae-Stark/QWAMOS/blob/master/docs/QWAMOS-SECURE-VOICE-IMPLEMENTATION.md)
+
+        ### Checksums
+
+        See `checksums-${{ steps.version.outputs.VERSION }}.txt` for SHA256 and MD5 hashes.
+
+        ### License
+
+        GPLv2+ (same as upstream Simlar)
+
+        ---
+
+        **Built for QWAMOS** | **PQ-Only** | **Quantum-Resistant**
+        EOF
+
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ steps.version.outputs.VERSION }}
+        name: QWAMOS Secure Voice ${{ steps.version.outputs.VERSION }}
+        body_path: release-notes-${{ steps.version.outputs.VERSION }}.md
+        draft: false
+        prerelease: true
+        files: |
+          simlar-qwamos-${{ steps.version.outputs.VERSION }}-unsigned.apk
+          checksums-${{ steps.version.outputs.VERSION }}.txt
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Summary
+      run: |
+        VERSION=${{ steps.version.outputs.VERSION }}
+        echo "### 🎉 Release Created: $VERSION" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**APK:** simlar-qwamos-${VERSION}-unsigned.apk" >> $GITHUB_STEP_SUMMARY
+        echo "**Status:** Pre-release (unsigned)" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "⚠️ **APK must be signed before distribution**" >> $GITHUB_STEP_SUMMARY

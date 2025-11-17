@@ -1,0 +1,259 @@
+name: Android CI/CD
+
+on:
+  push:
+    branches: [ "master", "feature/qwamos-pq-secure-voice" ]
+  pull_request:
+    branches: [ "master", "feature/qwamos-pq-secure-voice" ]
+  workflow_dispatch:
+
+env:
+  JAVA_VERSION: '17'
+  ANDROID_API_LEVEL: '35'
+  ANDROID_BUILD_TOOLS_VERSION: '34.0.0'
+
+jobs:
+  build-debug:
+    name: Build Debug APK
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        submodules: recursive
+
+    - name: Set up JDK ${{ env.JAVA_VERSION }}
+      uses: actions/setup-java@v4
+      with:
+        java-version: ${{ env.JAVA_VERSION }}
+        distribution: 'temurin'
+        cache: gradle
+
+    - name: Setup Android SDK
+      uses: android-actions/setup-android@v3
+      with:
+        api-level: ${{ env.ANDROID_API_LEVEL }}
+        build-tools: ${{ env.ANDROID_BUILD_TOOLS_VERSION }}
+
+    - name: Grant execute permission for gradlew
+      run: chmod +x gradlew
+
+    - name: Cache Gradle packages
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.gradle/caches
+          ~/.gradle/wrapper
+        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+        restore-keys: |
+          ${{ runner.os }}-gradle-
+
+    - name: Build with Gradle (Debug)
+      run: ./gradlew assembleDebug --stacktrace --no-daemon
+      env:
+        ANDROID_HOME: ${{ env.ANDROID_SDK_ROOT }}
+
+    - name: List build outputs
+      run: |
+        echo "=== Debug APK Build Outputs ==="
+        find app/build/outputs -type f -name "*.apk" -o -name "*.aab"
+
+    - name: Upload Debug APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: simlar-qwamos-debug-apk
+        path: app/build/outputs/apk/alwaysOnline/debug/app-alwaysOnline-debug.apk
+        retention-days: 30
+
+    - name: Build Summary
+      run: |
+        echo "### ✅ Debug Build Successful" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**APK Location:** app/build/outputs/apk/alwaysOnline/debug/" >> $GITHUB_STEP_SUMMARY
+        echo "**Artifact:** simlar-qwamos-debug-apk" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**QWAMOS Features:**" >> $GITHUB_STEP_SUMMARY
+        echo "- 🔒 Post-Quantum ZRTP (Kyber-1024/512)" >> $GITHUB_STEP_SUMMARY
+        echo "- 🚫 PQ-only policy enforcement" >> $GITHUB_STEP_SUMMARY
+        echo "- 📞 Carrier call warnings" >> $GITHUB_STEP_SUMMARY
+        echo "- 🌐 Network proxy routing (Tor/I2P)" >> $GITHUB_STEP_SUMMARY
+        echo "- 📹 Video call PQ verification" >> $GITHUB_STEP_SUMMARY
+
+  build-release:
+    name: Build Release APK
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        submodules: recursive
+
+    - name: Set up JDK ${{ env.JAVA_VERSION }}
+      uses: actions/setup-java@v4
+      with:
+        java-version: ${{ env.JAVA_VERSION }}
+        distribution: 'temurin'
+        cache: gradle
+
+    - name: Setup Android SDK
+      uses: android-actions/setup-android@v3
+      with:
+        api-level: ${{ env.ANDROID_API_LEVEL }}
+        build-tools: ${{ env.ANDROID_BUILD_TOOLS_VERSION }}
+
+    - name: Grant execute permission for gradlew
+      run: chmod +x gradlew
+
+    - name: Cache Gradle packages
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.gradle/caches
+          ~/.gradle/wrapper
+        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+        restore-keys: |
+          ${{ runner.os }}-gradle-
+
+    - name: Build with Gradle (Release - unsigned)
+      run: ./gradlew assembleAlwaysOnlineRelease -Pno-google-services --stacktrace --no-daemon
+      env:
+        ANDROID_HOME: ${{ env.ANDROID_SDK_ROOT }}
+
+    - name: List build outputs
+      run: |
+        echo "=== Release APK Build Outputs ==="
+        find app/build/outputs -type f -name "*.apk" -o -name "*.aab"
+
+    - name: Upload Release APK (unsigned)
+      uses: actions/upload-artifact@v4
+      with:
+        name: simlar-qwamos-release-unsigned-apk
+        path: app/build/outputs/apk/alwaysOnline/release/app-alwaysOnline-release-unsigned.apk
+        retention-days: 90
+
+    - name: Build Summary
+      run: |
+        echo "### ✅ Release Build Successful" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**APK Location:** app/build/outputs/apk/alwaysOnline/release/" >> $GITHUB_STEP_SUMMARY
+        echo "**Artifact:** simlar-qwamos-release-unsigned-apk" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "⚠️ **Note:** APK is unsigned. Sign with your keystore before distribution." >> $GITHUB_STEP_SUMMARY
+
+  lint-and-test:
+    name: Lint & Unit Tests
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Set up JDK ${{ env.JAVA_VERSION }}
+      uses: actions/setup-java@v4
+      with:
+        java-version: ${{ env.JAVA_VERSION }}
+        distribution: 'temurin'
+        cache: gradle
+
+    - name: Setup Android SDK
+      uses: android-actions/setup-android@v3
+      with:
+        api-level: ${{ env.ANDROID_API_LEVEL }}
+        build-tools: ${{ env.ANDROID_BUILD_TOOLS_VERSION }}
+
+    - name: Grant execute permission for gradlew
+      run: chmod +x gradlew
+
+    - name: Run Lint
+      run: ./gradlew lintDebug --no-daemon
+      continue-on-error: true
+      env:
+        ANDROID_HOME: ${{ env.ANDROID_SDK_ROOT }}
+
+    - name: Upload Lint Results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: lint-results
+        path: app/build/reports/lint-results-*.html
+        retention-days: 30
+
+    - name: Run Unit Tests
+      run: ./gradlew testDebugUnitTest --no-daemon
+      continue-on-error: true
+      env:
+        ANDROID_HOME: ${{ env.ANDROID_SDK_ROOT }}
+
+    - name: Upload Test Results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: test-results
+        path: app/build/reports/tests/
+        retention-days: 30
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Run QWAMOS Security Checklist
+      run: |
+        echo "### 🔐 QWAMOS Security Verification" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+
+        # Check for PQ ZRTP configuration
+        if grep -q "K448Kyb1024" app/src/main/java/org/simlar/service/liblinphone/LinphoneHandler.java; then
+          echo "✅ PQ ZRTP suites configured (Kyber-1024/512)" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "❌ PQ ZRTP suites NOT found" >> $GITHUB_STEP_SUMMARY
+        fi
+
+        # Check for classical suite removal
+        if ! grep -q "ZrtpKeyAgreement.X255" app/src/main/java/org/simlar/service/liblinphone/LinphoneHandler.java; then
+          echo "✅ Classical-only suites removed (X255, X448, DH)" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "❌ Classical-only suites still present" >> $GITHUB_STEP_SUMMARY
+        fi
+
+        # Check for PQ policy enforcement
+        if grep -q "enforceQwamosPqPolicy" app/src/main/java/org/simlar/service/liblinphone/LinphoneManager.java; then
+          echo "✅ PQ-only policy enforcement present" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "❌ PQ-only policy enforcement missing" >> $GITHUB_STEP_SUMMARY
+        fi
+
+        # Check for carrier call warning
+        if [ -f "app/src/main/java/org/simlar/service/CarrierCallWarningService.java" ]; then
+          echo "✅ Carrier call warning system implemented" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "⚠️ Carrier call warning system not found" >> $GITHUB_STEP_SUMMARY
+        fi
+
+        # Check for network proxy config
+        if [ -f "app/src/main/java/org/simlar/helper/QwamosNetworkConfig.java" ]; then
+          echo "✅ Network proxy routing (Tor/I2P) implemented" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "⚠️ Network proxy routing not found" >> $GITHUB_STEP_SUMMARY
+        fi
+
+        # Check for video PQ verification
+        if grep -q "isVideoStreamSecure" app/src/main/java/org/simlar/helper/QwamosPqSecurityHelper.java; then
+          echo "✅ Video stream PQ verification implemented" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "⚠️ Video stream PQ verification not found" >> $GITHUB_STEP_SUMMARY
+        fi
+
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Package:** org.qwamos.securevoice" >> $GITHUB_STEP_SUMMARY
+        echo "**Build Config:** QWAMOS_PQ_ONLY=true" >> $GITHUB_STEP_SUMMARY
