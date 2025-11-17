@@ -224,4 +224,108 @@ public final class QwamosPqSecurityHelper {
 
         Lg.i("=== END SECURITY DETAILS ===");
     }
+
+    /**
+     * Check if video stream is enabled and PQ-secured
+     *
+     * @param call The call to check
+     * @return true if video is enabled and secure, false otherwise
+     */
+    public static boolean isVideoStreamSecure(@Nullable Call call) {
+        if (call == null) {
+            return false;
+        }
+
+        try {
+            final CallStats videoStats = call.getVideoStats(StreamType.Video);
+            if (videoStats == null) {
+                Lg.i("QWAMOS: No video stream active");
+                return false; // No video stream, not applicable
+            }
+
+            // Check if video stream uses PQ key agreement
+            final boolean videoPqSecured = videoStats.isZrtpKeyAgreementAlgoPostQuantum();
+            Lg.i("QWAMOS: Video stream PQ-secured: ", videoPqSecured ? "YES" : "NO");
+
+            return videoPqSecured;
+
+        } catch (Exception e) {
+            Lg.ex(e, "QWAMOS: Error checking video stream security");
+            return false;
+        }
+    }
+
+    /**
+     * Get combined security status for audio and video streams
+     *
+     * @param call The call to analyze
+     * @return true if all active streams are PQ-secured
+     */
+    public static boolean areAllStreamsSecure(@Nullable Call call) {
+        if (call == null) {
+            return false;
+        }
+
+        // Audio must always be PQ-secured
+        final boolean audioSecure = isCallPqSecured(call);
+        if (!audioSecure) {
+            Lg.w("QWAMOS: Audio stream not PQ-secured");
+            return false;
+        }
+
+        // If video is active, it must also be PQ-secured
+        try {
+            final CallStats videoStats = call.getVideoStats(StreamType.Video);
+            if (videoStats != null) {
+                final boolean videoSecure = isVideoStreamSecure(call);
+                if (!videoSecure) {
+                    Lg.w("QWAMOS: Video stream not PQ-secured");
+                    return false;
+                }
+            }
+        } catch (Exception e) {
+            Lg.ex(e, "QWAMOS: Error checking all streams");
+            return false;
+        }
+
+        Lg.i("QWAMOS: All active streams are PQ-secured");
+        return true;
+    }
+
+    /**
+     * Get detailed security status including video
+     *
+     * @param call The call to analyze
+     * @return Formatted string with audio and video security status
+     */
+    @NonNull
+    public static String getDetailedSecurityStatus(@Nullable Call call) {
+        if (call == null) {
+            return "No active call";
+        }
+
+        final StringBuilder status = new StringBuilder();
+        final SecurityLevel audioLevel = getCallSecurityLevel(call);
+
+        status.append("Audio: ").append(audioLevel.getIcon()).append(" ").append(audioLevel.getDisplayName());
+
+        try {
+            final CallStats videoStats = call.getVideoStats(StreamType.Video);
+            if (videoStats != null) {
+                final boolean videoPqSecured = videoStats.isZrtpKeyAgreementAlgoPostQuantum();
+                if (videoPqSecured) {
+                    status.append("\nVideo: 🔒 PQ-Secured");
+                } else {
+                    status.append("\nVideo: 🚫 Classical Only");
+                }
+            } else {
+                status.append("\nVideo: Not active");
+            }
+        } catch (Exception e) {
+            Lg.ex(e, "QWAMOS: Error getting video status");
+            status.append("\nVideo: Unknown");
+        }
+
+        return status.toString();
+    }
 }

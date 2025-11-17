@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ~ Copyright (C) 2025 QWAMOS Project
+  ~
+  ~ This file is part of Simlar for QWAMOS (https://github.com/Dezirae-Stark/simlar-for-QWAMOS).
+  ~
+  ~ This program is free software; you can redistribute it and/or
+  ~ modify it under the terms of the GNU General Public License
+  ~ as published by the Free Software Foundation; either version 2
+  ~ of the License, or (at your option) any later version.
+  -->
+
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#FFFFFFFF"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="20dp">
+
+        <!-- Warning Header -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="⚠️ SECURITY ALERT"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:textColor="#FFCC0000"
+            android:gravity="center"
+            android:paddingBottom="10dp" />
+
+        <!-- Red Warning Box -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="#FFFFEBEE"
+            android:padding="15dp"
+            android:layout_marginBottom="15dp">
+
+            <TextView
+                android:id="@+id/textViewCallerInfo"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Incoming from: Unknown"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:textColor="#FF000000"
+                android:paddingBottom="10dp" />
+
+            <TextView
+                android:id="@+id/textViewWarningMessage"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="INSECURE CARRIER CALL DETECTED"
+                android:textSize="14sp"
+                android:textColor="#FF000000"
+                android:lineSpacingMultiplier="1.2" />
+
+        </LinearLayout>
+
+        <!-- QWAMOS Security Policy Info -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="QWAMOS Security Policy Recommendation:"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:textColor="#FF1976D2"
+            android:paddingBottom="10dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Reject this call and use QWAMOS Secure Voice with post-quantum encryption instead."
+            android:textSize="14sp"
+            android:textColor="#FF000000"
+            android:paddingBottom="20dp"
+            android:lineSpacingMultiplier="1.2" />
+
+        <!-- Remember Choice Checkbox -->
+        <CheckBox
+            android:id="@+id/checkBoxRememberChoice"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Remember my choice (don't ask again)"
+            android:textSize="14sp"
+            android:paddingBottom="20dp" />
+
+        <!-- Action Buttons -->
+        <Button
+            android:id="@+id/buttonRejectSecure"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="✓ Reject &amp; Use Secure Voice (Recommended)"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:textColor="#FFFFFFFF"
+            android:background="#FF4CAF50"
+            android:padding="15dp"
+            android:layout_marginBottom="10dp" />
+
+        <Button
+            android:id="@+id/buttonAcceptInsecure"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Accept Insecure Call (Not Recommended)"
+            android:textSize="14sp"
+            android:textColor="#FFFFFFFF"
+            android:background="#FFCC0000"
+            android:padding="12dp" />
+
+    </LinearLayout>
+
+</ScrollView>

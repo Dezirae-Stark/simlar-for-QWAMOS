@@ -57,6 +57,10 @@
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
+    <!-- QWAMOS: Carrier Call Warning System Permissions -->
+    <uses-permission android:name="android.permission.ANSWER_PHONE_CALLS" />
+    <uses-permission android:name="android.permission.READ_CALL_LOG" />
+
     <application
         android:name=".App"
         android:allowBackup="false"
@@ -83,6 +87,14 @@
             android:foregroundServiceType="phoneCall"
             android:exported="false"
             android:stopWithTask="false"
+            tools:ignore="UnusedAttribute" />
+
+        <!-- QWAMOS: Carrier Call Warning Service -->
+        <service
+            android:name=".service.CarrierCallWarningService"
+            android:foregroundServiceType="phoneCall"
+            android:exported="false"
+            android:enabled="true"
             tools:ignore="UnusedAttribute" />
 
         <activity
@@ -127,6 +139,24 @@
             android:launchMode="singleTop"
             android:screenOrientation="portrait"
             tools:ignore="DiscouragedApi,LockedOrientationActivity" />
+
+        <!-- QWAMOS: Carrier Call Warning Activities -->
+        <activity
+            android:name=".widgets.CarrierCallWarningActivity"
+            android:label="Security Warning"
+            android:launchMode="singleTop"
+            android:theme="@style/dialogTheme"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true"
+            android:excludeFromRecents="true"
+            tools:ignore="UnusedAttribute" />
+
+        <activity
+            android:name=".widgets.SecureVoiceInstructionsActivity"
+            android:label="Use Secure Voice"
+            android:launchMode="singleTop"
+            android:theme="@style/dialogTheme"
+            android:excludeFromRecents="true" />
     </application>
 
 </manifest>

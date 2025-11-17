@@ -45,6 +45,14 @@ public final class PreferencesHelper
 	private static final int MISSED_CALL_NOTIFICATION_ID_MIN = 2;
 	private static final int MISSED_CALL_NOTIFICATION_ID_MAX = 256;
 
+	// QWAMOS: Carrier Call Warning Preferences
+	private static final String PREFERENCES_CARRIER_CALL_WARNING_ENABLED = "carrier_call_warning_enabled";
+	private static final boolean PREFERENCES_CARRIER_CALL_WARNING_ENABLED_DEFAULT = true; // Security-first default
+	private static final String PREFERENCES_CARRIER_CALL_ACTION = "carrier_call_action";
+	public static final String CARRIER_CALL_ACTION_WARN = "warn"; // Show warning dialog (default)
+	public static final String CARRIER_CALL_ACTION_AUTO_REJECT = "auto_reject"; // Automatically reject
+	public static final String CARRIER_CALL_ACTION_ALLOW = "allow"; // Allow without warning (insecure)
+
 	private static String mMySimlarId = null;
 	private static String mPassword = null;
 	private static String mPasswordHash = null;
@@ -259,5 +267,34 @@ public final class PreferencesHelper
 		editor.putInt(PREFERENCES_MISSED_CALL_NOTIFICATION_ID, mMissedCallNotificationId);
 		editor.apply();
 		return nextId;
+	}
+
+	// QWAMOS: Carrier Call Warning Preferences Methods
+	public static boolean getCarrierCallWarningEnabled(final Context context)
+	{
+		final SharedPreferences settings = context.getSharedPreferences(PREFERENCES_FILE, Context.MODE_PRIVATE);
+		return settings.getBoolean(PREFERENCES_CARRIER_CALL_WARNING_ENABLED, PREFERENCES_CARRIER_CALL_WARNING_ENABLED_DEFAULT);
+	}
+
+	public static void setCarrierCallWarningEnabled(final Context context, final boolean enabled)
+	{
+		final SharedPreferences settings = context.getSharedPreferences(PREFERENCES_FILE, Context.MODE_PRIVATE);
+		final SharedPreferences.Editor editor = settings.edit();
+		editor.putBoolean(PREFERENCES_CARRIER_CALL_WARNING_ENABLED, enabled);
+		editor.apply();
+	}
+
+	public static String getCarrierCallAction(final Context context)
+	{
+		final SharedPreferences settings = context.getSharedPreferences(PREFERENCES_FILE, Context.MODE_PRIVATE);
+		return settings.getString(PREFERENCES_CARRIER_CALL_ACTION, CARRIER_CALL_ACTION_WARN);
+	}
+
+	public static void setCarrierCallAction(final Context context, final String action)
+	{
+		final SharedPreferences settings = context.getSharedPreferences(PREFERENCES_FILE, Context.MODE_PRIVATE);
+		final SharedPreferences.Editor editor = settings.edit();
+		editor.putString(PREFERENCES_CARRIER_CALL_ACTION, action);
+		editor.apply();
 	}
 }

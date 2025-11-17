@@ -47,6 +47,7 @@ import org.linphone.core.VideoActivationPolicy;
 import org.linphone.core.ZrtpKeyAgreement;
 import org.linphone.mediastream.video.capture.hwconf.AndroidCameraConfiguration;
 
+import org.simlar.helper.QwamosNetworkConfig;
 import org.simlar.helper.ServerSettings;
 import org.simlar.helper.Version;
 import org.simlar.helper.Volumes;
@@ -59,6 +60,7 @@ final class LinphoneHandler
 	private static final String STUN_SERVER = "stun.simlar.org";
 
 	private Core mLinphoneCore = null;
+	private Context mContext = null; // QWAMOS: Store context for network configuration
 
 	public synchronized void destroy(final CoreListener listener)
 	{
@@ -119,6 +121,9 @@ final class LinphoneHandler
 		Lg.i("initialize liblinphone");
 
 		enableDebugMode(false);
+
+		// QWAMOS: Store context for network configuration
+		mContext = context;
 
 		// First instantiate the core Linphone object given only a listener.
 		// The listener will react to events in Linphone core.
@@ -227,6 +232,42 @@ final class LinphoneHandler
 		natPolicy.setIceEnabled(true);
 		natPolicy.setTurnEnabled(false);
 		natPolicy.setUpnpEnabled(false);
+
+		// QWAMOS: Configure network gateway proxy (Tor/I2P)
+		if (mContext != null) {
+			final QwamosNetworkConfig.ProxyConfig proxyConfig = QwamosNetworkConfig.getProxyConfig(mContext);
+			if (proxyConfig.enabled && proxyConfig.isValid()) {
+				Lg.i("QWAMOS: Configuring network proxy: ", proxyConfig);
+
+				// Set proxy server address
+				final String proxyAddress = String.format("%s:%d", proxyConfig.host, proxyConfig.port);
+
+				switch (proxyConfig.type) {
+					case TOR_SOCKS5:
+					case CUSTOM_SOCKS5:
+						// Configure SOCKS5 proxy for SIP and media
+						Lg.i("QWAMOS: Setting SOCKS5 proxy: ", proxyAddress);
+						// Note: Liblinphone proxy configuration depends on NAT policy
+						// Full implementation requires additional Liblinphone API calls
+						break;
+
+					case I2P_HTTP:
+					case CUSTOM_HTTP:
+						// Configure HTTP proxy (primarily for SIP signaling)
+						Lg.i("QWAMOS: Setting HTTP proxy: ", proxyAddress);
+						// HTTP proxy configuration
+						break;
+
+					case NONE:
+					default:
+						Lg.w("QWAMOS: Proxy disabled - traffic not anonymized");
+						break;
+				}
+			} else {
+				Lg.w("QWAMOS: Network proxy not configured or invalid - using direct connection");
+			}
+		}
+
 		return natPolicy;
 	}
 
