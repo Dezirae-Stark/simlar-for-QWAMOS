@@ -237,7 +237,7 @@ public final class QwamosPqSecurityHelper {
         }
 
         try {
-            final CallStats videoStats = call.getVideoStats(StreamType.Video);
+            final CallStats videoStats = call.getVideoStats();
             if (videoStats == null) {
                 Lg.i("QWAMOS: No video stream active");
                 return false; // No video stream, not applicable
@@ -275,7 +275,7 @@ public final class QwamosPqSecurityHelper {
 
         // If video is active, it must also be PQ-secured
         try {
-            final CallStats videoStats = call.getVideoStats(StreamType.Video);
+            final CallStats videoStats = call.getVideoStats();
             if (videoStats != null) {
                 final boolean videoSecure = isVideoStreamSecure(call);
                 if (!videoSecure) {
@@ -310,7 +310,7 @@ public final class QwamosPqSecurityHelper {
         status.append("Audio: ").append(audioLevel.getIcon()).append(" ").append(audioLevel.getDisplayName());
 
         try {
-            final CallStats videoStats = call.getVideoStats(StreamType.Video);
+            final CallStats videoStats = call.getVideoStats();
             if (videoStats != null) {
                 final boolean videoPqSecured = videoStats.isZrtpKeyAgreementAlgoPostQuantum();
                 if (videoPqSecured) {
