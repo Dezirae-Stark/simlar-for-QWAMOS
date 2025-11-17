@@ -9,8 +9,6 @@ on:
 
 env:
   JAVA_VERSION: '17'
-  ANDROID_API_LEVEL: '35'
-  ANDROID_BUILD_TOOLS_VERSION: '34.0.0'
 
 jobs:
   build-debug:
@@ -31,11 +29,15 @@ jobs:
         distribution: 'temurin'
         cache: gradle
 
-    - name: Setup Android SDK
-      uses: android-actions/setup-android@v3
-      with:
-        api-level: ${{ env.ANDROID_API_LEVEL }}
-        build-tools: ${{ env.ANDROID_BUILD_TOOLS_VERSION }}
+    - name: Setup Android SDK Path
+      run: |
+        echo "ANDROID_HOME=$ANDROID_HOME" >> $GITHUB_ENV
+        echo "ANDROID_SDK_ROOT=$ANDROID_HOME" >> $GITHUB_ENV
+
+    - name: Create local.properties
+      run: |
+        echo "sdk.dir=$ANDROID_HOME" > local.properties
+        cat local.properties
 
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
@@ -52,34 +54,41 @@ jobs:
 
     - name: Build with Gradle (Debug)
       run: ./gradlew assembleDebug --stacktrace --no-daemon
-      env:
-        ANDROID_HOME: ${{ env.ANDROID_SDK_ROOT }}
 
     - name: List build outputs
       run: |
         echo "=== Debug APK Build Outputs ==="
-        find app/build/outputs -type f -name "*.apk" -o -name "*.aab"
+        find app/build/outputs -type f -name "*.apk" -o -name "*.aab" || echo "No APK/AAB files found"
 
     - name: Upload Debug APK
       uses: actions/upload-artifact@v4
+      if: success()
       with:
         name: simlar-qwamos-debug-apk
         path: app/build/outputs/apk/alwaysOnline/debug/app-alwaysOnline-debug.apk
         retention-days: 30
+        if-no-files-found: error
 
     - name: Build Summary
+      if: always()
       run: |
-        echo "### ✅ Debug Build Successful" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "**APK Location:** app/build/outputs/apk/alwaysOnline/debug/" >> $GITHUB_STEP_SUMMARY
-        echo "**Artifact:** simlar-qwamos-debug-apk" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "**QWAMOS Features:**" >> $GITHUB_STEP_SUMMARY
-        echo "- 🔒 Post-Quantum ZRTP (Kyber-1024/512)" >> $GITHUB_STEP_SUMMARY
-        echo "- 🚫 PQ-only policy enforcement" >> $GITHUB_STEP_SUMMARY
-        echo "- 📞 Carrier call warnings" >> $GITHUB_STEP_SUMMARY
-        echo "- 🌐 Network proxy routing (Tor/I2P)" >> $GITHUB_STEP_SUMMARY
-        echo "- 📹 Video call PQ verification" >> $GITHUB_STEP_SUMMARY
+        if [ -f app/build/outputs/apk/alwaysOnline/debug/app-alwaysOnline-debug.apk ]; then
+          echo "### ✅ Debug Build Successful" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**APK Location:** app/build/outputs/apk/alwaysOnline/debug/" >> $GITHUB_STEP_SUMMARY
+          echo "**Artifact:** simlar-qwamos-debug-apk" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**QWAMOS Features:**" >> $GITHUB_STEP_SUMMARY
+          echo "- 🔒 Post-Quantum ZRTP (Kyber-1024/512)" >> $GITHUB_STEP_SUMMARY
+          echo "- 🚫 PQ-only policy enforcement" >> $GITHUB_STEP_SUMMARY
+          echo "- 📞 Carrier call warnings" >> $GITHUB_STEP_SUMMARY
+          echo "- 🌐 Network proxy routing (Tor/I2P)" >> $GITHUB_STEP_SUMMARY
+          echo "- 📹 Video call PQ verification" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "### ❌ Debug Build Failed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Check build logs for errors" >> $GITHUB_STEP_SUMMARY
+        fi
 
   build-release:
     name: Build Release APK
@@ -100,11 +109,15 @@ jobs:
         distribution: 'temurin'
         cache: gradle
 
-    - name: Setup Android SDK
-      uses: android-actions/setup-android@v3
-      with:
-        api-level: ${{ env.ANDROID_API_LEVEL }}
-        build-tools: ${{ env.ANDROID_BUILD_TOOLS_VERSION }}
+    - name: Setup Android SDK Path
+      run: |
+        echo "ANDROID_HOME=$ANDROID_HOME" >> $GITHUB_ENV
+        echo "ANDROID_SDK_ROOT=$ANDROID_HOME" >> $GITHUB_ENV
+
+    - name: Create local.properties
+      run: |
+        echo "sdk.dir=$ANDROID_HOME" > local.properties
+        cat local.properties
 
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
@@ -121,29 +134,36 @@ jobs:
 
     - name: Build with Gradle (Release - unsigned)
       run: ./gradlew assembleAlwaysOnlineRelease -Pno-google-services --stacktrace --no-daemon
-      env:
-        ANDROID_HOME: ${{ env.ANDROID_SDK_ROOT }}
 
     - name: List build outputs
       run: |
         echo "=== Release APK Build Outputs ==="
-        find app/build/outputs -type f -name "*.apk" -o -name "*.aab"
+        find app/build/outputs -type f -name "*.apk" -o -name "*.aab" || echo "No APK/AAB files found"
 
     - name: Upload Release APK (unsigned)
       uses: actions/upload-artifact@v4
+      if: success()
       with:
         name: simlar-qwamos-release-unsigned-apk
         path: app/build/outputs/apk/alwaysOnline/release/app-alwaysOnline-release-unsigned.apk
         retention-days: 90
+        if-no-files-found: warn
 
     - name: Build Summary
+      if: always()
       run: |
-        echo "### ✅ Release Build Successful" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "**APK Location:** app/build/outputs/apk/alwaysOnline/release/" >> $GITHUB_STEP_SUMMARY
-        echo "**Artifact:** simlar-qwamos-release-unsigned-apk" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "⚠️ **Note:** APK is unsigned. Sign with your keystore before distribution." >> $GITHUB_STEP_SUMMARY
+        if [ -f app/build/outputs/apk/alwaysOnline/release/app-alwaysOnline-release-unsigned.apk ]; then
+          echo "### ✅ Release Build Successful" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**APK Location:** app/build/outputs/apk/alwaysOnline/release/" >> $GITHUB_STEP_SUMMARY
+          echo "**Artifact:** simlar-qwamos-release-unsigned-apk" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "⚠️ **Note:** APK is unsigned. Sign with your keystore before distribution." >> $GITHUB_STEP_SUMMARY
+        else
+          echo "### ❌ Release Build Failed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Check build logs for errors" >> $GITHUB_STEP_SUMMARY
+        fi
 
   lint-and-test:
     name: Lint & Unit Tests
@@ -162,11 +182,14 @@ jobs:
         distribution: 'temurin'
         cache: gradle
 
-    - name: Setup Android SDK
-      uses: android-actions/setup-android@v3
-      with:
-        api-level: ${{ env.ANDROID_API_LEVEL }}
-        build-tools: ${{ env.ANDROID_BUILD_TOOLS_VERSION }}
+    - name: Setup Android SDK Path
+      run: |
+        echo "ANDROID_HOME=$ANDROID_HOME" >> $GITHUB_ENV
+        echo "ANDROID_SDK_ROOT=$ANDROID_HOME" >> $GITHUB_ENV
+
+    - name: Create local.properties
+      run: |
+        echo "sdk.dir=$ANDROID_HOME" > local.properties
 
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
@@ -174,8 +197,6 @@ jobs:
     - name: Run Lint
       run: ./gradlew lintDebug --no-daemon
       continue-on-error: true
-      env:
-        ANDROID_HOME: ${{ env.ANDROID_SDK_ROOT }}
 
     - name: Upload Lint Results
       uses: actions/upload-artifact@v4
@@ -184,12 +205,11 @@ jobs:
         name: lint-results
         path: app/build/reports/lint-results-*.html
         retention-days: 30
+        if-no-files-found: ignore
 
     - name: Run Unit Tests
       run: ./gradlew testDebugUnitTest --no-daemon
       continue-on-error: true
-      env:
-        ANDROID_HOME: ${{ env.ANDROID_SDK_ROOT }}
 
     - name: Upload Test Results
       uses: actions/upload-artifact@v4
@@ -198,6 +218,7 @@ jobs:
         name: test-results
         path: app/build/reports/tests/
         retention-days: 30
+        if-no-files-found: ignore
 
   security-scan:
     name: Security Scan
