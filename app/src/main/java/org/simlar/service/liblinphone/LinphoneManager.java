@@ -138,6 +138,17 @@ public final class LinphoneManager extends CoreListenerStub
 		mLinphoneHandler.terminateAllCalls();
 	}
 
+	// QWAMOS: Expose current call for PQ security checking
+	public org.linphone.core.Call getCurrentCall()
+	{
+		return mLinphoneHandler.getCurrentCall();
+	}
+
+	public boolean hasCurrentCall()
+	{
+		return !mLinphoneHandler.hasNoCurrentCalls();
+	}
+
 	public void verifyAuthenticationToken(final String token, final boolean verified)
 	{
 		mLinphoneHandler.verifyAuthenticationToken(token, verified);

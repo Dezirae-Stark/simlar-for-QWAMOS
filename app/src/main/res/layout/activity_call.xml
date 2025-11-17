@@ -159,11 +159,44 @@
             </LinearLayout>
         </LinearLayout>
 
+        <!-- QWAMOS: Post-Quantum Security Indicator -->
+        <LinearLayout
+            android:id="@+id/linearLayoutPqSecurityStatus"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@+id/linearLayoutConnectionQuality"
+            android:layout_centerHorizontal="true"
+            android:layout_marginBottom="5dp"
+            android:background="#E8F5E9"
+            android:orientation="horizontal"
+            android:padding="5dp"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/textViewPqSecurityIcon"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:paddingLeft="5dp"
+                android:paddingRight="5dp"
+                android:text="🔒"
+                android:textAppearance="?android:attr/textAppearanceMedium"
+                android:textSize="18sp" />
+
+            <TextView
+                android:id="@+id/textViewPqSecurityStatus"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:paddingRight="5dp"
+                android:text="PQ-Secured (Kyber)"
+                android:textAppearance="?android:attr/textAppearanceSmall"
+                android:textStyle="bold" />
+        </LinearLayout>
+
         <LinearLayout
             android:id="@+id/linearLayoutVerifiedAuthenticationToken"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_below="@+id/linearLayoutConnectionQuality"
+            android:layout_below="@+id/linearLayoutPqSecurityStatus"
             android:layout_centerHorizontal="true"
             android:background="#EFEFEF"
             android:orientation="horizontal"
@@ -193,7 +226,7 @@
             android:layout_height="wrap_content"
             android:layout_alignParentLeft="true"
             android:layout_alignParentRight="true"
-            android:layout_below="@+id/linearLayoutConnectionQuality"
+            android:layout_below="@+id/linearLayoutPqSecurityStatus"
             android:layout_marginLeft="@dimen/activity_call_inner_side_margin"
             android:layout_marginRight="@dimen/activity_call_inner_side_margin"
             android:background="@drawable/border_round_corners"
@@ -255,7 +288,7 @@
             android:layout_height="wrap_content"
             android:layout_alignParentLeft="true"
             android:layout_alignParentRight="true"
-            android:layout_below="@+id/linearLayoutConnectionQuality"
+            android:layout_below="@+id/linearLayoutPqSecurityStatus"
             android:layout_centerInParent="false"
             android:layout_marginLeft="@dimen/activity_call_inner_side_margin"
             android:layout_marginRight="@dimen/activity_call_inner_side_margin"

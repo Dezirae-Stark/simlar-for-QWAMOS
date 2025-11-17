@@ -49,6 +49,7 @@ import java.util.Set;
 
 import org.simlar.R;
 import org.simlar.helper.PermissionsHelper;
+import org.simlar.helper.QwamosPqSecurityHelper;
 import org.simlar.helper.VideoState;
 import org.simlar.logging.Lg;
 import org.simlar.proximityscreenlocker.ProximityScreenLocker;
@@ -89,6 +90,11 @@ public final class CallActivity extends AppCompatActivity implements VolumesCont
 
 	private LinearLayout mLayoutAuthenticationToken = null;
 	private TextView mTextViewAuthenticationToken = null;
+
+	// QWAMOS: Post-Quantum Security Indicator
+	private LinearLayout mLayoutPqSecurityStatus = null;
+	private TextView mTextViewPqSecurityIcon = null;
+	private TextView mTextViewPqSecurityStatus = null;
 
 	private LinearLayout mLayoutCallEndReason = null;
 	private TextView mTextViewCallEndReason = null;
@@ -193,6 +199,11 @@ public final class CallActivity extends AppCompatActivity implements VolumesCont
 		mLayoutAuthenticationToken = findViewById(R.id.linearLayoutAuthenticationToken);
 		mTextViewAuthenticationToken = findViewById(R.id.textViewAuthenticationToken);
 
+		// QWAMOS: Initialize PQ security indicator views
+		mLayoutPqSecurityStatus = findViewById(R.id.linearLayoutPqSecurityStatus);
+		mTextViewPqSecurityIcon = findViewById(R.id.textViewPqSecurityIcon);
+		mTextViewPqSecurityStatus = findViewById(R.id.textViewPqSecurityStatus);
+
 		mLayoutCallEndReason = findViewById(R.id.linearLayoutCallEndReason);
 		mTextViewCallEndReason = findViewById(R.id.textViewCallEndReason);
 
@@ -296,6 +307,38 @@ public final class CallActivity extends AppCompatActivity implements VolumesCont
 		}
 	}
 
+	// QWAMOS: Update post-quantum security status indicator
+	private void updatePqSecurityStatus()
+	{
+		if (mCommunicator.getService() == null) {
+			mLayoutPqSecurityStatus.setVisibility(View.GONE);
+			return;
+		}
+
+		// Get PQ security status from service
+		final String pqStatus = mCommunicator.getService().getPqSecurityStatus();
+		if (Util.isNullOrEmpty(pqStatus)) {
+			mLayoutPqSecurityStatus.setVisibility(View.GONE);
+			return;
+		}
+
+		// Update UI with status
+		final boolean isPqSecured = mCommunicator.getService().isCallPqSecured();
+
+		if (isPqSecured) {
+			mTextViewPqSecurityIcon.setText("🔒");
+			mLayoutPqSecurityStatus.setBackgroundColor(0xFFE8F5E9); // Light green
+		} else {
+			mTextViewPqSecurityIcon.setText("🚫");
+			mLayoutPqSecurityStatus.setBackgroundColor(0xFFFFEBEE); // Light red
+		}
+
+		mTextViewPqSecurityStatus.setText(pqStatus);
+		mLayoutPqSecurityStatus.setVisibility(View.VISIBLE);
+
+		Lg.i("QWAMOS: PQ Security Status updated: ", pqStatus);
+	}
+
 	private void onSimlarCallStateChanged()
 	{
 		if (mCommunicator.getService() == null) {
@@ -329,6 +372,9 @@ public final class CallActivity extends AppCompatActivity implements VolumesCont
 		}
 
 		setCallEncryption(simlarCallState.getAuthenticationToken(), simlarCallState.isAuthenticationTokenVerified());
+
+		// QWAMOS: Update PQ security indicator
+		updatePqSecurityStatus();
 
 		if (simlarCallState.isTalking()) {
 			setVolumeControlStream(AudioManager.STREAM_VOICE_CALL);

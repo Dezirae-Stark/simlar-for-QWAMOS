@@ -76,6 +76,7 @@ import org.simlar.helper.Volumes.MicrophoneStatus;
 import org.simlar.logging.Lg;
 import org.simlar.service.SoundEffectManager.SoundEffectType;
 import org.simlar.service.liblinphone.LinphoneCallState;
+import org.simlar.helper.QwamosPqSecurityHelper;
 import org.simlar.service.liblinphone.LinphoneManager;
 import org.simlar.service.liblinphone.LinphoneManagerListener;
 import org.simlar.utils.Util;
@@ -115,6 +116,9 @@ public final class SimlarService extends Service implements LinphoneManagerListe
 	private PendingIntent mKeepAwakePendingIntent = null;
 	private final KeepAwakeReceiver mKeepAwakeReceiver = FlavourHelper.isGcmEnabled() ? null : new KeepAwakeReceiver();
 	private VideoState mVideoState = VideoState.OFF;
+	// QWAMOS: Post-Quantum security status
+	private String mPqSecurityStatus = "";
+	private boolean mIsPqSecured = false;
 
 	public final class SimlarServiceBinder extends Binder
 	{
@@ -1195,6 +1199,43 @@ public final class SimlarService extends Service implements LinphoneManagerListe
 	public CallConnectionDetails getCallConnectionDetails()
 	{
 		return mCallConnectionDetails;
+	}
+
+	// QWAMOS: Get Post-Quantum security status for current call
+	public String getPqSecurityStatus()
+	{
+		if (mLinphoneManager == null || !mLinphoneManager.hasCurrentCall()) {
+			return "";
+		}
+
+		try {
+			// Get current call and check PQ security
+			final org.linphone.core.Call call = mLinphoneManager.getCurrentCall();
+			if (call == null) {
+				return "";
+			}
+
+			return QwamosPqSecurityHelper.getSecurityStatusMessage(call);
+		} catch (Exception e) {
+			Lg.ex(e, "QWAMOS: Error getting PQ security status");
+			return "";
+		}
+	}
+
+	// QWAMOS: Check if current call is PQ secured
+	public boolean isCallPqSecured()
+	{
+		if (mLinphoneManager == null || !mLinphoneManager.hasCurrentCall()) {
+			return false;
+		}
+
+		try {
+			final org.linphone.core.Call call = mLinphoneManager.getCurrentCall();
+			return call != null && QwamosPqSecurityHelper.isCallPqSecured(call);
+		} catch (Exception e) {
+			Lg.ex(e, "QWAMOS: Error checking PQ security");
+			return false;
+		}
 	}
 
 	public static boolean isRunning()

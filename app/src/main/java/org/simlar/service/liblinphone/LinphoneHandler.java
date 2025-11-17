@@ -314,7 +314,8 @@ final class LinphoneHandler
 		Lg.i("Call to ", new Lg.Anonymizer(number), " is in progress...");
 	}
 
-	private Call getCurrentCall()
+	// QWAMOS: Changed to public for PQ security status checking
+	public Call getCurrentCall()
 	{
 		/// NOTE Core.getCurrentCall() does not return paused calls
 
